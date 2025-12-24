@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ecommerce Básico</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+    header { background: #0f172a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    .container { max-width: 1100px; margin: 1rem auto; padding: 0 1rem; }
+    .card { background: white; padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,.05); margin-bottom: 1rem; }
+    .products { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .product { border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem; text-align: center; }
+    button { border-radius: 999px; border: none; padding: .5rem 1rem; cursor: pointer; }
+    .primary { background: #2563eb; color: white; }
+    .danger { background: #dc2626; color: white; }
+    input { padding: .5rem; width: 100%; margin-bottom: .5rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>Ecommerce</h2>
+    <nav>
+      <button onclick="showView('login')">Login</button>
+      <button onclick="showView('register')">Registro</button>
+      <button onclick="showView('store')">Tienda</button>
+      <button onclick="showView('cart')">Carrito (<span id="cart-count">0</span>)</button>
+    </nav>
+  </header>
+
+  <main class="container">
+  
+    <section id="login" class="card" style="display:none;">
+      <h3>Iniciar sesión</h3>
+      <input id="login-email" type="email" placeholder="Email" />
+      <input id="login-password" type="password" placeholder="Contraseña" />
+      <button class="primary" onclick="login()">Entrar</button>
+      <p id="login-msg"></p>
+    </section>
+
+    
+    <section id="register" class="card" style="display:none;">
+      <h3>Registro</h3>
+      <input id="reg-name" type="text" placeholder="Nombre" />
+      <input id="reg-email" type="email" placeholder="Email" />
+      <input id="reg-password" type="password" placeholder="Contraseña" />
+      <button class="primary" onclick="register()">Crear cuenta</button>
+      <p id="reg-msg"></p>
+    </section>
+
+    <section id="store" class="card" style="display:none;">
+      <h3>Productos</h3>
+      <div id="products" class="products"></div>
+    </section>
+
+    
+    <section id="cart" class="card" style="display:none;">
+      <h3>Carrito</h3>
+      <ul id="cart-items"></ul>
+      <p><strong>Total:</strong> $<span id="total">0</span></p>
+      <button class="danger" onclick="clearCart()">Vaciar carrito</button>
+    </section>
+  </main>
+
+  <script>
+    const API = 'http://localhost:8080'; 
+    let token = '';
+    let cart = [];
+
+    function showView(id) {
+      document.querySelectorAll('main section').forEach(s => s.style.display = 'none');
+      document.getElementById(id).style.display = 'block';
+    }
+
+    async function register() {
+      const res = await fetch(`${API}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: document.getElementById('reg-name').value,
+          email: document.getElementById('reg-email').value,
+          password: document.getElementById('reg-password').value,
+        }),
+      });
+      const data = await res.json();
+      document.getElementById('reg-msg').innerText = data.message || 'Registrado';
+    }
+
+    async function login() {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('login-email').value,
+          password: document.getElementById('login-password').value,
+        }),
+      });
+      const data = await res.json();
+      token = data.token;
+      document.getElementById('login-msg').innerText = token ? 'Login exitoso' : (data.message || 'Error');
+      if (token) loadProducts();
+    }
+
+    async function loadProducts() {
+      const res = await fetch(`${API}/products`);
+      const products = await res.json();
+      const container = document.getElementById('products');
+      container.innerHTML = '';
+
+      products.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'product';
+        div.innerHTML = `
+          <h4>${p.name}</h4>
+          <p>$${p.price}</p>
+          <button class="primary" onclick='addToCart(${JSON.stringify(JSON.stringify({id: ""}))})'>Agregar</button>
+        `;
+      });
+    }
+
+    function addToCart(product) {
+      cart.push(product);
+      document.getElementById('cart-count').innerText = cart.length;
+      renderCart();
+    }
+
+    function renderCart() {
+      const list = document.getElementById('cart-items');
+      list.innerHTML = '';
+      let total = 0;
+
+      cart.forEach(p => {
+        const li = document.createElement('li');
+        li.textContent = `${p.name} - $${p.price}`;
+        list.appendChild(li);
+        total += p.price;
+      });
+
+      document.getElementById('total').innerText = total.toFixed(2);
+    }
+
+    function clearCart() {
+      cart = [];
+      document.getElementById('cart-count').innerText = 0;
+      renderCart();
+    }
+
+    showView('store');
+    loadProducts();
+  </script>
+</body>
+</html>
